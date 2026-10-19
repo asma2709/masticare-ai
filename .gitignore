@@ -1,0 +1,38 @@
+﻿.env
+.env.*
+!.env.example
+!.env.*.example
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# Local databases and test data
+*.db
+*.sqlite
+*.sqlite3
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Frontend dependencies and builds
+node_modules/
+dist/
+build/
+
+# Test/cache output
+.pytest_cache/
+.mypy_cache/

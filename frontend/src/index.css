@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --color-forest: #244D38;
+  --color-forest-hover: #1d3e2d;
+  --color-deep: #183629;
+  --color-sage: #A9BCA3;
+  --color-sage-dark: #7E9576;
+  --color-sage-light: #E8EFE6;
+  --color-ivory: #F7F6EF;
+  --color-ivory-warm: #FAF9F3;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Tamil", "Noto Sans Devanagari", "Noto Sans Telugu", "Noto Sans Malayalam", system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: #F7F6EF;
+  color: #183629;
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Tamil', 'Noto Sans Devanagari', 'Noto Sans Telugu', 'Noto Sans Malayalam', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F7F6EF;
+}
+::-webkit-scrollbar-thumb {
+  background: #A9BCA3;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #244D38;
+}
+
+/* --- RUNNING COW IN-PLACE ANIMATION KEYFRAMES --- */
+@keyframes stationaryTrot {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes stationaryShadow {
+  0%, 100% {
+    transform: scaleX(1) scaleY(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scaleX(0.88) scaleY(0.85);
+    opacity: 0.22;
+  }
+}
+
+@keyframes shimmerEffect {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.animate-stationary-trot {
+  animation: stationaryTrot 0.35s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-stationary-shadow {
+  animation: stationaryShadow 0.35s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-shimmer {
+  animation: shimmerEffect 1.8s infinite;
+}

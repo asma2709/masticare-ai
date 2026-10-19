@@ -1,0 +1,106 @@
+{
+  "model": "Random Forest Classifier",
+  "model_version": "2.1.0",
+  "dataset_type": "Synthetic Multi-Sensor Telemetry Dataset (Software Prototype)",
+  "accuracy": 0.9366666666666666,
+  "balanced_accuracy": 0.9262731481481482,
+  "precision": 0.9355122800202604,
+  "recall": 0.9262731481481482,
+  "f1_score": 0.9301412432486705,
+  "baseline_model": "Multinomial Logistic Regression",
+  "baseline_accuracy": 0.93,
+  "baseline_f1_score": 0.9259364118585908,
+  "classes": [
+    "High Risk",
+    "Low Risk",
+    "Moderate Risk",
+    "No Risk"
+  ],
+  "confusion_matrix": [
+    [
+      131,
+      0,
+      13,
+      0
+    ],
+    [
+      0,
+      265,
+      15,
+      20
+    ],
+    [
+      1,
+      12,
+      203,
+      0
+    ],
+    [
+      0,
+      15,
+      0,
+      525
+    ]
+  ],
+  "class_metrics": {
+    "High Risk": {
+      "precision": 0.9924242424242424,
+      "recall": 0.9097222222222222,
+      "f1_score": 0.9492753623188406,
+      "support": 144
+    },
+    "Low Risk": {
+      "precision": 0.9075342465753424,
+      "recall": 0.8833333333333333,
+      "f1_score": 0.8952702702702703,
+      "support": 300
+    },
+    "Moderate Risk": {
+      "precision": 0.8787878787878788,
+      "recall": 0.9398148148148148,
+      "f1_score": 0.9082774049217002,
+      "support": 216
+    },
+    "No Risk": {
+      "precision": 0.963302752293578,
+      "recall": 0.9722222222222222,
+      "f1_score": 0.967741935483871,
+      "support": 540
+    }
+  },
+  "feature_importances": {
+    "temperature": 0.10048610124860254,
+    "activity": 0.286700845303486,
+    "milk_ph": 0.23245323894198916,
+    "milk_ec": 0.38035981450592227
+  },
+  "train_samples": 4800,
+  "test_samples": 1200,
+  "features": [
+    {
+      "name": "milk_ec",
+      "label": "Milk Electrical Conductivity",
+      "unit": "mS/cm",
+      "importance": 0.38035981450592227
+    },
+    {
+      "name": "activity",
+      "label": "Cow Movement & Rumination Index",
+      "unit": "index",
+      "importance": 0.286700845303486
+    },
+    {
+      "name": "milk_ph",
+      "label": "Milk pH Acidity",
+      "unit": "pH",
+      "importance": 0.23245323894198916
+    },
+    {
+      "name": "temperature",
+      "label": "Reticulo-Rumen Core Temperature",
+      "unit": "\u00b0C",
+      "importance": 0.10048610124860254
+    }
+  ],
+  "protocol_notes": "Model trained and evaluated on 6,000 synthetic bovine telemetry records generated from established veterinary mastitis thresholds. Evaluated with an 80/20 stratified holdout split. Demonstrates multi-sensor algorithmic capability for multi-parameter risk classification. Clinical deployment requires subsequent real-world dairy field validation."
+}
