@@ -322,7 +322,7 @@ export const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* Research Prototype Footnote */}
+      {/* Platform Status Footnote */}
       <div className="mt-8 text-center text-xs text-stone-400">
         {t('common.researchDisclaimer')}
       </div>

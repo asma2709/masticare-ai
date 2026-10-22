@@ -1,6 +1,7 @@
 import React, { useState, useEffect, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from './services/api';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
@@ -37,8 +38,6 @@ interface VetNote {
   timestamp: string;
   note: string;
 }
-
-const API_BASE = 'http://localhost:8000/api/v1';
 
 const VetPortal: React.FC = () => {
   const { t } = useTranslation();
@@ -426,7 +425,7 @@ const VetPortal: React.FC = () => {
         </div>
       </div>
 
-      {/* Subtle Research Prototype Footnote */}
+      {/* Platform Status Footnote */}
       <div className="pt-2 text-center text-xs text-stone-400">
         {t('vet.researchFootnote')}
       </div>

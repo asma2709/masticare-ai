@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from './services/api';
 import { useTranslation } from 'react-i18next';
 import {
   Search,
@@ -19,8 +20,6 @@ export interface Cow {
   breed: string;
   age: number;
 }
-
-const API_BASE = 'http://localhost:8000/api/v1';
 
 const CowList: React.FC = () => {
   const { t } = useTranslation();
@@ -42,7 +41,7 @@ const CowList: React.FC = () => {
       setError(null);
     } catch (e: any) {
       console.error(e);
-      setError('Failed to connect to backend API on port 8000.');
+      setError('Failed to connect to backend API. Please ensure the backend server is running and accessible.');
     } finally {
       setLoading(false);
     }
@@ -193,7 +192,7 @@ const CowList: React.FC = () => {
         </div>
       </div>
 
-      {/* Research Prototype Footnote */}
+      {/* Platform Status Footnote */}
       <div className="pt-2 text-center text-xs text-stone-400">
         {t('common.researchDisclaimer')}
       </div>

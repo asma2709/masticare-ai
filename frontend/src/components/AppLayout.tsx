@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,6 +21,7 @@ import MastiCareLogo from './MastiCareLogo';
 import UserMenu from './UserMenu';
 import LanguageSelector from './LanguageSelector';
 import { useAuth } from '../context/AuthContext';
+import { useLoading } from '../context/LoadingContext';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -30,7 +31,52 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  const { triggerModuleTransition, isInitialLoaded } = useLoading();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const prevPathRef = useRef<string>(location.pathname);
+
+  // Smooth CowLoader transition when navigating between major modules
+  useEffect(() => {
+    if (!isInitialLoaded) {
+      prevPathRef.current = location.pathname;
+      return;
+    }
+
+    const prev = prevPathRef.current;
+    const current = location.pathname;
+
+    if (prev !== current) {
+      prevPathRef.current = current;
+
+      // Module-specific friendly messages
+      const moduleMessages: Record<string, string> = {
+        '/dashboard': 'Preparing your farm dashboard…',
+        '/cows': 'Loading herd health registry…',
+        '/simulation': 'Initializing simulation studio…',
+        '/vet': 'Opening veterinary clinical portal…',
+        '/metrics': 'Calculating AI model metrics…',
+        '/': 'Returning to overview…',
+      };
+
+      const getModuleRoot = (path: string) => {
+        if (path === '/') return '/';
+        if (path.startsWith('/dashboard')) return '/dashboard';
+        if (path.startsWith('/cows')) return '/cows';
+        if (path.startsWith('/simulation')) return '/simulation';
+        if (path.startsWith('/vet')) return '/vet';
+        if (path.startsWith('/metrics')) return '/metrics';
+        return null;
+      };
+
+      const prevModule = getModuleRoot(prev);
+      const currentModule = getModuleRoot(current);
+
+      // Only trigger when switching across different top-level modules
+      if (currentModule && prevModule !== currentModule) {
+        triggerModuleTransition(moduleMessages[currentModule] || 'Monitoring herd health…', 450);
+      }
+    }
+  }, [location.pathname, isInitialLoaded, triggerModuleTransition]);
 
   // Check if current route is a focused authentication page
   const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(location.pathname);

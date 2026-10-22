@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from './services/api';
 import { useTranslation } from 'react-i18next';
 import {
   LineChart,
@@ -51,8 +52,6 @@ interface VetNote {
   timestamp: string;
   note: string;
 }
-
-const API_BASE = 'http://localhost:8000/api/v1';
 
 const CowDetail: React.FC = () => {
   const { t } = useTranslation();
@@ -621,7 +620,7 @@ const CowDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Research Prototype Footnote */}
+      {/* Platform Status Footnote */}
       <div className="pt-2 text-center text-xs text-stone-400">
         {t('common.researchDisclaimer')}
       </div>

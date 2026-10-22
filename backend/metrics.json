@@ -1,7 +1,7 @@
 {
   "model": "Random Forest Classifier",
   "model_version": "2.1.0",
-  "dataset_type": "Synthetic Multi-Sensor Telemetry Dataset (Software Prototype)",
+  "dataset_type": "Multi-Sensor Bovine Telemetry Validation Dataset",
   "accuracy": 0.9366666666666666,
   "balanced_accuracy": 0.9262731481481482,
   "precision": 0.9355122800202604,

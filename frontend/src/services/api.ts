@@ -1,9 +1,16 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 
 // Base URL for API requests.
-// When running in development, we can use relative path '/api' through Vite proxy,
-// or direct URL if VITE_API_URL is specified.
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// In production or when VITE_API_URL is specified, use that base URL.
+// In development without VITE_API_URL, fallback to http://localhost:8000.
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000')
+).replace(/\/+$/, '');
+
+export const API_BASE = `${API_BASE_URL}/api/v1`;
+
+// Ensure default axios requests also support credentials
+axios.defaults.withCredentials = true;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -14,12 +21,16 @@ const api = axios.create({
 });
 
 // Interceptor to attach Authorization header if a token is in localStorage (as a fallback/backup)
-api.interceptors.request.use((config) => {
+const attachAuthToken = (config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem('masticare_token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+};
+
+api.interceptors.request.use(attachAuthToken);
+axios.interceptors.request.use(attachAuthToken);
 
 export default api;
+

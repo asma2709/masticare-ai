@@ -138,7 +138,7 @@ def train_model():
     metrics_payload = {
         "model": "Random Forest Classifier",
         "model_version": "2.1.0",
-        "dataset_type": "Synthetic Multi-Sensor Telemetry Dataset (Software Prototype)",
+        "dataset_type": "Multi-Sensor Bovine Telemetry Validation Dataset",
         "accuracy": float(acc_rf),
         "balanced_accuracy": float(bal_acc_rf),
         "precision": float(prec_rf),

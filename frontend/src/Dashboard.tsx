@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from './services/api';
 import { useTranslation } from 'react-i18next';
 import {
   LineChart,
@@ -23,7 +24,6 @@ import {
   Thermometer,
   Layers,
 } from 'lucide-react';
-import { useLoading } from './context/LoadingContext';
 import { MastiCareLogoIcon } from './components/MastiCareLogo';
 
 export interface Cow {
@@ -54,11 +54,8 @@ export interface AlertItem {
   message: string;
 }
 
-const API_BASE = 'http://localhost:8000/api/v1';
-
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { startLoading, stopLoading } = useLoading();
   const [cows, setCows] = useState<Cow[]>([]);
   const [selectedCowId, setSelectedCowId] = useState<number | null>(null);
   const [readings, setReadings] = useState<Reading[]>([]);
@@ -91,7 +88,7 @@ const Dashboard: React.FC = () => {
       }
     } catch (e: any) {
       console.error(e);
-      setError('Could not connect to the MastiCare API. Please ensure the backend server is running on port 8000.');
+      setError('Could not connect to the MastiCare API. Please ensure the backend server is running and accessible.');
     }
   };
 
@@ -113,7 +110,6 @@ const Dashboard: React.FC = () => {
 
   const handleSimulateStep = async () => {
     setLoading(true);
-    startLoading(t('dashboard.refreshing'));
     try {
       await axios.post(`${API_BASE}/simulation/generate`);
       // Refresh data
@@ -127,7 +123,6 @@ const Dashboard: React.FC = () => {
       setError('Simulation trigger encountered an error.');
     } finally {
       setLoading(false);
-      stopLoading();
     }
   };
 
@@ -760,7 +755,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Subtle Research Prototype Footnote */}
+      {/* Platform Status Footnote */}
       <div className="pt-2 text-center text-xs text-stone-400">
         {t('common.researchDisclaimer')}
       </div>

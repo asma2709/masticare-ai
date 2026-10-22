@@ -55,7 +55,7 @@ const Landing: React.FC = () => {
             />
           </div>
 
-          {/* Prototype Badge */}
+          {/* Platform Status Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#A9BCA3] text-xs font-semibold tracking-wide mb-6">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>{t('landing.prototypeBadge')}</span>
@@ -465,7 +465,7 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* 6. SECTION 5: MODEL EVALUATION & CURRENT PROTOTYPE LIMITATIONS */}
+      {/* 6. SECTION 5: MODEL EVALUATION & CLINICAL METHODOLOGY */}
       <section className="bg-white border-t border-[#244D38]/10 py-20 lg:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-12 gap-12 items-center">

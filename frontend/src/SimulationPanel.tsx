@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from './services/api';
 import {
   Sliders,
   Thermometer,
@@ -22,7 +23,6 @@ import {
   Clock,
   RotateCcw,
 } from 'lucide-react';
-import { useLoading } from './context/LoadingContext';
 import { MastiCareLogoIcon } from './components/MastiCareLogo';
 
 interface Cow {
@@ -73,8 +73,6 @@ interface PredictionResult {
   model_engine: string;
 }
 
-const API_BASE = 'http://localhost:8000/api/v1';
-
 // Reference Bounds
 const PHYSIO_RANGES = {
   temperature: { min: 36.5, max: 42.0, step: 0.1, normMin: 38.0, normMax: 39.0, unit: '°C', label: 'Body / Rumen Temperature' },
@@ -85,7 +83,6 @@ const PHYSIO_RANGES = {
 
 const SimulationPanel: React.FC = () => {
   const navigate = useNavigate();
-  const { startLoading, stopLoading } = useLoading();
   const { t } = useTranslation();
 
   // State
@@ -152,7 +149,6 @@ const SimulationPanel: React.FC = () => {
 
     setIsPredicting(true);
     setErrorMessage(null);
-    startLoading('Running AI Inference on Simulated Bio-Telemetry...');
 
     try {
       const activePreset = presets.find((p) => p.id === activePresetId);
@@ -175,14 +171,12 @@ const SimulationPanel: React.FC = () => {
       setErrorMessage(`Prediction failed: ${detail}`);
     } finally {
       setIsPredicting(false);
-      stopLoading();
     }
   };
 
   const handleRunHerdBatch = async () => {
     setBatchLoading(true);
     setBatchFeedback(null);
-    startLoading('Simulating full-herd telemetry cycle...');
     try {
       const res = await axios.post(`${API_BASE}/simulation/generate`);
       setBatchFeedback(res.data?.message || 'Routine telemetry cycle completed across all cows.');
@@ -191,7 +185,6 @@ const SimulationPanel: React.FC = () => {
       setBatchFeedback('Failed to run herd cycle.');
     } finally {
       setBatchLoading(false);
-      stopLoading();
     }
   };
 

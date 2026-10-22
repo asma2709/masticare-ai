@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
+import { API_BASE } from './services/api';
 import {
   ShieldAlert,
   BarChart3,
@@ -47,8 +48,6 @@ interface MetricsData {
   features: FeatureItem[];
   protocol_notes: string;
 }
-
-const API_BASE = 'http://localhost:8000/api/v1';
 
 const ModelEvaluation: React.FC = () => {
   const { t } = useTranslation();

@@ -43,10 +43,14 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://masticare-ai-tztq.vercel.app",
 ]
 env_origins = os.getenv("CORS_ORIGINS")
 if env_origins:
-    origins.extend([o.strip() for o in env_origins.split(",") if o.strip()])
+    for o in env_origins.split(","):
+        clean_origin = o.strip().rstrip("/")
+        if clean_origin and clean_origin not in origins:
+            origins.append(clean_origin)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,6 +58,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # --- SERIALIZATION HELPERS ---
@@ -86,16 +91,18 @@ def set_auth_cookie(response: Response, token: str, remember_me: bool = False):
         expires=max_age,
         path="/",
         httponly=True,
-        samesite="lax",
+        samesite="none" if is_production else "lax",
         secure=is_production,
     )
 
 def clear_auth_cookie(response: Response):
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
     response.delete_cookie(
         key="masticare_token",
         path="/",
         httponly=True,
-        samesite="lax",
+        samesite="none" if is_production else "lax",
+        secure=is_production,
     )
 
 # --- REQUEST SCHEMAS ---
@@ -208,7 +215,7 @@ def register(req: RegisterRequest, request: Request, response: Response, db: Ses
         email=email,
         password_hash=pwd_hash,
         auth_provider="email",
-        is_verified=True, # Default active in research prototype
+        is_verified=True, # Default active account in standard configuration
         role="farm_manager",
         theme="system",
         default_view="dashboard",
