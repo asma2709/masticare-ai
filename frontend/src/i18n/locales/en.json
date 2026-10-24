@@ -180,6 +180,9 @@
     "featTemp": "Body Temperature"
   },
   "auth": {
+    "demoBadge": "Demo Account",
+    "useDemoAccount": "Use Demo Account",
+    "demoPrompt": "Click \"Use Demo Account\" to fill credentials for Dr. Demo Veterinarian and explore 30+ simulated cows, live telemetry, and alerts.",
     "welcomeBack": "Welcome back",
     "signInSub": "Sign in to continue to your account.",
     "createAccount": "Create an account",
@@ -236,6 +239,9 @@
     }
   },
   "dashboard": {
+    "riskDistributionTitle": "Herd Mastitis Risk Distribution",
+    "riskDistributionSub": "Live stratification based on multi-sensor conductivity, temperature, and rumination telemetry.",
+    "simulatedDemoData": "Simulated Herd Telemetry",
     "headerBadge": "Active Telemetry Monitoring",
     "title": "Herd Health Overview",
     "subtitle": "Synthesizing smart collar bio-metrics with in-line milk cup conductivity to forecast mastitis risk before clinical flare-up.",
@@ -647,11 +653,14 @@
     }
   },
   "loading": {
-    "bovineIntel": "Bovine Health Intelligence",
-    "tagline": "Detect Early. Protect Every Drop.",
-    "connecting": "Connecting to herd telemetry streams...",
-    "liveFeeds": "Live Telemetry Feeds",
-    "researchFootnote": "Bovine Health Platform — Multi-sensor dairy telemetry and predictive health intelligence."
+    "bovineIntel": "Precision Bovine Healthcare",
+    "tagline": "Better Care. Healthier Herds.",
+    "preparing": "Preparing your farm dashboard…",
+    "calibrating": "Calibrating herd telemetry",
+    "retry": "Retry Connection",
+    "continue": "Continue to Dashboard",
+    "demoNotice": "Demonstration Mode • Simulated Telemetry",
+    "researchFootnote": "MastiCare AI • Precision Dairy Wellness Platform"
   },
   "userMenu": {
     "helpArchitecture": "Help & Architecture",

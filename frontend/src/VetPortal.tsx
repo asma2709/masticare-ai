@@ -116,13 +116,13 @@ const VetPortal: React.FC = () => {
   // Filter alerts
   const filteredAlerts = alerts.filter((a) => {
     if (filterStatus === 'ACTIVE') return a.status !== 'Resolved';
-    if (filterStatus === 'HIGH') return a.risk_category === 'High Risk' && a.status !== 'Resolved';
+    if (filterStatus === 'HIGH') return (a.risk_category === 'High Risk' || a.risk_category === 'Critical Risk') && a.status !== 'Resolved';
     if (filterStatus === 'RESOLVED') return a.status === 'Resolved';
     return true; // ALL
   });
 
   const activeCount = alerts.filter((a) => a.status !== 'Resolved').length;
-  const highRiskCount = alerts.filter((a) => a.risk_category === 'High Risk' && a.status !== 'Resolved').length;
+  const highRiskCount = alerts.filter((a) => (a.risk_category === 'High Risk' || a.risk_category === 'Critical Risk') && a.status !== 'Resolved').length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -223,7 +223,8 @@ const VetPortal: React.FC = () => {
 
             <div className="space-y-3">
               {filteredAlerts.map((a) => {
-                const isHigh = a.risk_category === 'High Risk';
+                const isCritical = a.risk_category === 'Critical Risk';
+                const isHigh = isCritical || a.risk_category === 'High Risk';
                 const isResolved = a.status === 'Resolved';
                 const cowObj = cows[a.cow_id];
 
@@ -233,6 +234,8 @@ const VetPortal: React.FC = () => {
                     className={`p-5 rounded-2xl border transition-all ${
                       isResolved
                         ? 'bg-[#FAF9F5] border-stone-200 text-stone-600'
+                        : isCritical
+                        ? 'bg-rose-50 border-rose-300 text-rose-950 shadow-xs ring-1 ring-rose-200'
                         : isHigh
                         ? 'bg-red-50/70 border-red-200 text-red-950 shadow-2xs'
                         : 'bg-amber-50/70 border-amber-200 text-amber-950 shadow-2xs'
@@ -271,12 +274,18 @@ const VetPortal: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span
                           className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider ${
-                            isHigh
+                            isCritical
+                              ? 'bg-rose-700 text-white'
+                              : isHigh
                               ? 'bg-red-200 text-red-900'
-                              : 'bg-amber-200 text-amber-900'
+                              : a.risk_category === 'Moderate Risk'
+                              ? 'bg-amber-200 text-amber-900'
+                              : 'bg-blue-100 text-blue-900'
                           }`}
                         >
-                          {isHigh
+                          {isCritical
+                            ? 'Critical Risk'
+                            : isHigh
                             ? t('common.highRisk')
                             : a.risk_category === 'Moderate Risk'
                             ? t('common.moderateRisk')

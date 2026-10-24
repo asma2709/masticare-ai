@@ -12,8 +12,9 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
-from database import SessionLocal, Cow, Reading, Alert, VetNote, User, PasswordResetToken, UserSession
+from database import SessionLocal, Cow, Reading, Alert, VetNote, User, PasswordResetToken, UserSession, ensure_schema_compatibility
 from auth import (
     get_db,
     hash_password,
@@ -36,6 +37,21 @@ app = FastAPI(
     description="Early Bovine Mastitis Forecasting & Health Telemetry Engine with Secure Auth",
     version="1.5.0",
 )
+
+@app.on_event("startup")
+def startup_event():
+    """
+    On application boot, verify database initialization, run idempotent schema compatibility,
+    and idempotently seed the demo user, herd registry, historical telemetry, alerts, and vet notes.
+    """
+    try:
+        ensure_schema_compatibility()
+        from seed import seed_all
+        summary = seed_all()
+        print(f"[STARTUP] Herd telemetry & demo account verification completed: {summary.get('status')}")
+    except Exception as e:
+        print(f"[STARTUP WARNING] Automated demo database seeding encountered an issue: {e}")
+
 
 # CORS Configuration with explicit origins to support HttpOnly cookie credentials
 origins = [
@@ -310,65 +326,92 @@ def login(req: LoginRequest, request: Request, response: Response, db: Session =
 
 @app.post("/api/auth/google")
 def google_auth(req: GoogleAuthRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    # Rate limit
+    # Rate limit: 15 attempts per minute per IP
     enforce_rate_limit(request, "google_auth", max_attempts=15, window_seconds=60)
 
-    if not req.credential:
+    if not req.credential or not req.credential.strip():
         raise HTTPException(status_code=400, detail="Missing Google credential.")
 
-    # Verify ID token with Google's servers
+    # 1. Cryptographically verify ID token with Google's public certs
     idinfo = verify_google_id_token(req.credential)
 
-    google_sub = idinfo.get("sub")
-    email = normalize_email(idinfo.get("email", ""))
-    name = idinfo.get("name") or "Google User"
+    # 2. Extract verified claims exclusively from the verified token
+    google_sub = str(idinfo.get("sub", "")).strip()
+    email = normalize_email(str(idinfo.get("email", "")))
+    name = (idinfo.get("name") or "").strip() or "Google User"
     picture = idinfo.get("picture")
 
     if not google_sub or not email:
         raise HTTPException(status_code=400, detail="Invalid Google token claims.")
 
-    # 1. Search by Google subject ID first
+    # 3. Look up existing user by Google sub identifier first
     user = db.query(User).filter(User.google_sub == google_sub).first()
 
-    if not user:
-        # 2. Check if user with this verified email already exists
-        user_by_email = db.query(User).filter(User.email == email).first()
-        if user_by_email:
-            # Safe account linking: Google confirmed email ownership
-            user = user_by_email
-            user.google_sub = google_sub
-            if user.auth_provider == "email":
-                user.auth_provider = "both"
-            if not user.avatar_url and picture:
-                user.avatar_url = picture
-            user.is_verified = True
-            db.commit()
-            db.refresh(user)
-        else:
-            # 3. Create new user for this Google account
-            user = User(
-                name=name,
-                email=email,
-                google_sub=google_sub,
-                avatar_url=picture,
-                auth_provider="google",
-                is_verified=True,
-                role="farm_manager",
-                theme="system",
-                default_view="dashboard",
-                notifications_enabled=True,
-                email_notifications=False,
-            )
-            db.add(user)
+    if user:
+        # Returning Google User: update profile picture or display name if available
+        updated = False
+        if picture and user.avatar_url != picture:
+            user.avatar_url = picture
+            updated = True
+        if name and (not user.name or user.name == "Google User"):
+            user.name = name
+            updated = True
+        if updated:
+            user.updated_at = datetime.utcnow()
             db.commit()
             db.refresh(user)
     else:
-        # Update avatar or name if Google profile changed
-        if picture and user.avatar_url != picture:
-            user.avatar_url = picture
-            db.commit()
+        # 4. Check if an account already exists with this verified email
+        existing_user_by_email = db.query(User).filter(User.email == email).first()
+        if existing_user_by_email:
+            # Safe account linking check:
+            # An account with this email exists, but was registered with password or another provider.
+            # As required by security best-practices, do not automatically link solely because the email matches!
+            if existing_user_by_email.google_sub and existing_user_by_email.google_sub != google_sub:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="An account with this email is already linked to a different Google account."
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="An account with this email address already exists with password authentication. Please sign in with your email and password."
+                )
+        else:
+            # 5. First-time Google user: create new user account
+            try:
+                new_user = User(
+                    name=name,
+                    email=email,
+                    google_sub=google_sub,
+                    avatar_url=picture,
+                    auth_provider="google",
+                    password_hash=None, # Google users do not have a password initially
+                    is_verified=True,   # Email is verified by Google
+                    role="farm_manager",
+                    theme="system",
+                    language="en",
+                    default_view="dashboard",
+                    notifications_enabled=True,
+                    email_notifications=False,
+                )
+                db.add(new_user)
+                db.commit()
+                db.refresh(new_user)
+                user = new_user
+            except IntegrityError:
+                # Handle concurrent first-time logins safely: roll back and re-fetch existing user
+                db.rollback()
+                user = db.query(User).filter(User.google_sub == google_sub).first()
+                if not user:
+                    user = db.query(User).filter(User.email == email).first()
+                if not user:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Concurrent account creation conflict. Please try again."
+                    )
 
-    # Create active session
+    # 6. Create active user session
     session_id = secrets.token_hex(16)
     client_ip = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
@@ -382,6 +425,7 @@ def google_auth(req: GoogleAuthRequest, request: Request, response: Response, db
     db.add(user_session)
     db.commit()
 
+    # 7. Generate JWT access token with user claims
     token = create_access_token({
         "sub": str(user.id),
         "email": user.email,
@@ -395,6 +439,45 @@ def google_auth(req: GoogleAuthRequest, request: Request, response: Response, db
         "user": serialize_user(user),
         "token": token,
     }
+
+@app.post("/api/auth/google/link")
+def link_google_account(req: GoogleAuthRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Allows an already authenticated user to securely link their Google account
+    after verifying their Google ID token.
+    """
+    if not req.credential or not req.credential.strip():
+        raise HTTPException(status_code=400, detail="Missing Google credential.")
+
+    idinfo = verify_google_id_token(req.credential)
+    google_sub = str(idinfo.get("sub", "")).strip()
+    picture = idinfo.get("picture")
+
+    # Check if this google_sub is already linked to another account
+    existing_sub_user = db.query(User).filter(User.google_sub == google_sub).first()
+    if existing_sub_user and existing_sub_user.id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This Google account is already linked to another user account."
+        )
+
+    current_user.google_sub = google_sub
+    if current_user.password_hash:
+        current_user.auth_provider = "both"
+    else:
+        current_user.auth_provider = "google"
+
+    if picture and not current_user.avatar_url:
+        current_user.avatar_url = picture
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Google account successfully linked.",
+        "user": serialize_user(current_user),
+    }
+
 
 @app.post("/api/auth/logout")
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
@@ -1039,7 +1122,7 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     total_alerts = len(all_alerts)
 
     active_alerts = [a for a in all_alerts if a.status != "Resolved"]
-    high_risk_alerts = [a for a in active_alerts if a.risk_category == "High Risk"]
+    high_risk_alerts = [a for a in active_alerts if a.risk_category in ["High Risk", "Critical Risk"]]
     moderate_risk_alerts = [a for a in active_alerts if a.risk_category == "Moderate Risk"]
 
     # Unique cows needing attention
@@ -1051,6 +1134,8 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
         latest = db.query(Reading).filter(Reading.cow_id == c.id).order_by(Reading.timestamp.desc()).first()
         if latest and latest.risk_category in cow_risk_dist:
             cow_risk_dist[latest.risk_category] += 1
+        elif latest and latest.risk_category == "Critical Risk":
+            cow_risk_dist["High Risk"] += 1
         else:
             cow_risk_dist["No Risk"] += 1
 
@@ -1247,4 +1332,56 @@ def get_model_metrics():
             return json.load(f)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Model metrics not available: {str(e)}")
+
+
+# ============================================================================
+# DEMO ACCOUNT & SEEDING VERIFICATION ENDPOINTS
+# ============================================================================
+
+@app.post("/api/v1/demo/seed")
+def trigger_demo_seed(db: Session = Depends(get_db)):
+    """
+    Idempotently seeds or verifies simulated herd demo data and demo user account.
+    Safe to execute repeatedly without duplicating cows, alerts, or users.
+    """
+    try:
+        from seed import seed_all
+        result = seed_all(db=db)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database seeding error: {str(e)}")
+
+
+@app.get("/api/v1/demo/status")
+def get_demo_status(db: Session = Depends(get_db)):
+    """
+    Inspects demo data readiness and herd counts in the active production database.
+    """
+    from seed import DEMO_EMAIL, DEMO_NAME, DEMO_ROLE
+    demo_user = db.query(User).filter(User.email == DEMO_EMAIL).first()
+    cow_count = db.query(Cow).count()
+    reading_count = db.query(Reading).count()
+    alert_count = db.query(Alert).count()
+    note_count = db.query(VetNote).count()
+
+    return {
+        "status": "ready" if (demo_user is not None and cow_count >= 30) else "partial",
+        "demo_user": {
+            "email": DEMO_EMAIL,
+            "name": demo_user.name if demo_user else DEMO_NAME,
+            "role": demo_user.role if demo_user else DEMO_ROLE,
+            "exists": demo_user is not None,
+            "is_verified": bool(demo_user.is_verified) if demo_user else False,
+            "has_password": bool(demo_user.password_hash) if demo_user else False,
+        },
+        "herd_telemetry": {
+            "total_cows": cow_count,
+            "total_readings": reading_count,
+            "total_alerts": alert_count,
+            "total_vet_notes": note_count,
+        },
+        "database_type": "postgresql" if "postgresql" in str(db.bind.url) else "sqlite",
+        "ready": (demo_user is not None and cow_count >= 30),
+    }
+
 

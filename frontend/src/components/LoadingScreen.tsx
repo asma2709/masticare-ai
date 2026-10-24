@@ -3,7 +3,7 @@ import { useLoading } from '../context/LoadingContext';
 import CowLoader from './CowLoader';
 
 export const LoadingScreen: React.FC = () => {
-  const { isLoading, progress, message } = useLoading();
+  const { isLoading, progress, message, error, retry, stopLoading } = useLoading();
   const [shouldRender, setShouldRender] = useState<boolean>(isLoading);
   const [isFadingOut, setIsFadingOut] = useState<boolean>(false);
 
@@ -17,7 +17,7 @@ export const LoadingScreen: React.FC = () => {
       const timer = setTimeout(() => {
         setShouldRender(false);
         setIsFadingOut(false);
-      }, 450);
+      }, 350);
       return () => clearTimeout(timer);
     }
   }, [isLoading]);
@@ -26,7 +26,7 @@ export const LoadingScreen: React.FC = () => {
 
   return (
     <div
-      className={`fixed inset-0 z-50 transition-opacity duration-450 ease-in-out select-none ${
+      className={`fixed inset-0 z-50 transition-opacity duration-350 ease-out select-none ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       aria-hidden={!isLoading}
@@ -34,6 +34,9 @@ export const LoadingScreen: React.FC = () => {
       <CowLoader
         message={message}
         progress={progress}
+        error={error}
+        onRetry={retry}
+        onContinue={stopLoading}
         fullScreen={true}
       />
     </div>

@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react';
+import GoogleOAuthGuideModal from '../components/GoogleOAuthGuideModal';
 
 export const SignUp: React.FC = () => {
   const { t } = useTranslation();
@@ -28,11 +29,15 @@ export const SignUp: React.FC = () => {
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleSuccess, setGoogleSuccess] = useState(false);
+  const [showOAuthModal, setShowOAuthModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Check for configured Google Client ID
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  const googleClientId = rawGoogleClientId.trim().replace(/^['"]|['"]$/g, '');
   const isGoogleConfigured =
     Boolean(googleClientId) &&
     googleClientId !== 'your-google-client-id.apps.googleusercontent.com' &&
@@ -73,31 +78,38 @@ export const SignUp: React.FC = () => {
   useEffect(() => {
     if (!isGoogleConfigured) return;
 
+    let isMounted = true;
+
     const handleCredentialResponse = async (response: { credential?: string }) => {
+      if (!isMounted) return;
       if (!response.credential) {
         setErrorMsg('Sign-up cancelled. Please try again.');
         return;
       }
-      setLoading(true);
+      if (loading || googleLoading) return; // Prevent duplicate submissions
+
+      setGoogleLoading(true);
       setErrorMsg(null);
       try {
         await googleLogin(response.credential);
-        navigate('/dashboard', { replace: true });
+        if (isMounted) {
+          setGoogleSuccess(true);
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 350);
+        }
       } catch (err: unknown) {
-        const error = err as { response?: { data?: { detail?: string } } };
-        setErrorMsg(error.response?.data?.detail || 'Google sign-up failed. Please try again.');
-      } finally {
-        setLoading(false);
+        if (isMounted) {
+          const error = err as { response?: { data?: { detail?: string } } };
+          setErrorMsg(error.response?.data?.detail || 'Google sign-up failed. Please try again.');
+          setGoogleLoading(false);
+        }
       }
     };
 
-    if (!window.google?.accounts?.id) {
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        if (window.google?.accounts?.id && googleBtnRef.current) {
+    const renderGsiButton = () => {
+      if (window.google?.accounts?.id && googleBtnRef.current && isMounted) {
+        try {
           window.google.accounts.id.initialize({
             client_id: googleClientId,
             callback: handleCredentialResponse,
@@ -109,23 +121,33 @@ export const SignUp: React.FC = () => {
             text: 'signup_with',
             shape: 'rectangular',
           });
+        } catch (e) {
+          console.warn('Google Identity Services button render error:', e);
         }
-      };
-      document.body.appendChild(script);
-    } else if (googleBtnRef.current) {
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: handleCredentialResponse,
-      });
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
-        theme: 'outline',
-        size: 'large',
-        width: 320,
-        text: 'signup_with',
-        shape: 'rectangular',
-      });
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      renderGsiButton();
+    } else {
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', renderGsiButton);
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = renderGsiButton;
+        document.body.appendChild(script);
+      }
     }
-  }, [isGoogleConfigured, googleClientId, googleLogin, navigate]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isGoogleConfigured, googleClientId, googleLogin, navigate, loading, googleLoading]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,9 +192,6 @@ export const SignUp: React.FC = () => {
     }
   };
 
-  const handleUnconfiguredGoogleClick = () => {
-    setErrorMsg(t('auth.errors.googleDisabled'));
-  };
 
   return (
     <div className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
@@ -420,13 +439,35 @@ export const SignUp: React.FC = () => {
           </div>
 
           {/* Google Sign Up */}
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center w-full">
             {isGoogleConfigured ? (
-              <div ref={googleBtnRef} className="w-full flex justify-center min-h-[44px]" />
+              <div className="relative w-full flex justify-center min-h-[44px] items-center">
+                {(googleLoading || googleSuccess) && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/95 rounded-xl gap-2 text-xs font-semibold text-[#183629] border border-[#244D38]/20 shadow-xs animate-in fade-in">
+                    {googleSuccess ? (
+                      <div className="flex items-center gap-2 text-emerald-700">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Account verified! Redirecting to dashboard...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-[#244D38]/30 border-t-[#244D38] rounded-full animate-spin" />
+                        <span>Creating your account with Google...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div
+                  ref={googleBtnRef}
+                  className={`w-full flex justify-center ${
+                    googleLoading || loading ? 'opacity-30 pointer-events-none' : ''
+                  }`}
+                />
+              </div>
             ) : (
               <button
                 type="button"
-                onClick={handleUnconfiguredGoogleClick}
+                onClick={() => setShowOAuthModal(true)}
                 className="w-full py-2.5 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white hover:bg-stone-50 text-stone-700 font-medium text-xs sm:text-sm flex items-center justify-center gap-3 transition shadow-xs cursor-pointer"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -451,6 +492,11 @@ export const SignUp: React.FC = () => {
               </button>
             )}
           </div>
+
+          <GoogleOAuthGuideModal
+            isOpen={showOAuthModal}
+            onClose={() => setShowOAuthModal(false)}
+          />
 
           {/* Footer Link to Sign In */}
           <div className="mt-6 text-center text-xs text-stone-500">

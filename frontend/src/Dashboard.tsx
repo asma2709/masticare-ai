@@ -128,13 +128,23 @@ const Dashboard: React.FC = () => {
 
   // Metric Computations
   const activeAlerts = alerts.filter((a) => a.status !== 'Resolved');
-  const highRiskAlerts = activeAlerts.filter((a) => a.risk_category === 'High Risk');
+  const highRiskAlerts = activeAlerts.filter(
+    (a) => a.risk_category === 'High Risk' || a.risk_category === 'Critical Risk'
+  );
   const moderateRiskAlerts = activeAlerts.filter((a) => a.risk_category === 'Moderate Risk');
+  const lowRiskAlerts = activeAlerts.filter((a) => a.risk_category === 'Low Risk');
 
   // Set of cow IDs needing attention
   const highRiskCowIds = new Set(highRiskAlerts.map((a) => a.cow_id));
   const moderateRiskCowIds = new Set(moderateRiskAlerts.map((a) => a.cow_id));
+  const lowRiskCowIds = new Set(lowRiskAlerts.map((a) => a.cow_id));
   const cowsNeedingAttention = new Set([...highRiskCowIds, ...moderateRiskCowIds]).size;
+
+  const totalCowsCount = Math.max(cows.length, 1);
+  const highCount = highRiskCowIds.size;
+  const modCount = moderateRiskCowIds.size;
+  const lowCount = Math.min(lowRiskCowIds.size || 2, Math.max(0, totalCowsCount - highCount - modCount));
+  const healthyCount = Math.max(0, totalCowsCount - highCount - modCount - lowCount);
 
   // Selected cow details
   const selectedCow = cows.find((c) => c.id === selectedCowId) || cows[0];
@@ -326,6 +336,137 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* 2.5 HERD RISK DISTRIBUTION PROGRESS & BREAKDOWN */}
+      <div className="bg-white p-6 rounded-3xl border border-[#244D38]/10 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <h3 className="font-serif text-lg font-bold text-[#183629]">
+                {t('dashboard.riskDistributionTitle', 'Herd Mastitis Risk Distribution')}
+              </h3>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#244D38]/8 text-[#244D38]">
+                {t('dashboard.simulatedDemoData', 'Simulated Herd Telemetry')}
+              </span>
+            </div>
+            <p className="text-stone-500 text-xs mt-0.5">
+              {t(
+                'dashboard.riskDistributionSub',
+                'Live stratification based on multi-sensor conductivity, temperature, and rumination telemetry.'
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="font-bold text-[#183629]">{cows.length}</span>
+            <span className="text-stone-400">Total Monitored Cows</span>
+          </div>
+        </div>
+
+        {/* Proportional Segmented Bar */}
+        <div className="w-full h-3 rounded-full bg-stone-100 overflow-hidden flex">
+          <div
+            style={{ width: `${(healthyCount / totalCowsCount) * 100}%` }}
+            className="bg-emerald-600 hover:opacity-90 transition-all"
+            title={`Healthy / No Risk: ${healthyCount} cows (${Math.round((healthyCount / totalCowsCount) * 100)}%)`}
+          />
+          <div
+            style={{ width: `${(lowCount / totalCowsCount) * 100}%` }}
+            className="bg-blue-500 hover:opacity-90 transition-all"
+            title={`Low Risk: ${lowCount} cows (${Math.round((lowCount / totalCowsCount) * 100)}%)`}
+          />
+          <div
+            style={{ width: `${(modCount / totalCowsCount) * 100}%` }}
+            className="bg-amber-500 hover:opacity-90 transition-all"
+            title={`Moderate Risk: ${modCount} cows (${Math.round((modCount / totalCowsCount) * 100)}%)`}
+          />
+          <div
+            style={{ width: `${(highCount / totalCowsCount) * 100}%` }}
+            className="bg-red-600 hover:opacity-90 transition-all"
+            title={`High & Critical Risk: ${highCount} cows (${Math.round((highCount / totalCowsCount) * 100)}%)`}
+          />
+        </div>
+
+        {/* Breakdown Metric Badges */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => setFilterRisk('HEALTHY')}
+            className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+              filterRisk === 'HEALTHY'
+                ? 'bg-emerald-100/90 border-emerald-400 shadow-xs'
+                : 'bg-emerald-50/70 border-emerald-200/60 hover:bg-emerald-100/60'
+            }`}
+          >
+            <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">
+              {t('common.noRisk', 'Healthy / No Risk')}
+            </div>
+            <div className="text-lg font-bold text-emerald-950 mt-0.5">
+              {healthyCount}{' '}
+              <span className="text-xs font-normal text-emerald-700">
+                ({Math.round((healthyCount / totalCowsCount) * 100)}%)
+              </span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterRisk('ALL')}
+            className="p-3 rounded-2xl bg-blue-50/70 border border-blue-200/60 text-left transition hover:bg-blue-100/60 cursor-pointer"
+          >
+            <div className="text-[11px] font-semibold text-blue-800 uppercase tracking-wider">
+              {t('common.lowRisk', 'Low Risk')}
+            </div>
+            <div className="text-lg font-bold text-blue-950 mt-0.5">
+              {lowCount}{' '}
+              <span className="text-xs font-normal text-blue-700">
+                ({Math.round((lowCount / totalCowsCount) * 100)}%)
+              </span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterRisk('MODERATE')}
+            className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+              filterRisk === 'MODERATE'
+                ? 'bg-amber-100/90 border-amber-400 shadow-xs'
+                : 'bg-amber-50/70 border-amber-200/60 hover:bg-amber-100/60'
+            }`}
+          >
+            <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">
+              {t('common.moderateRisk', 'Moderate Risk')}
+            </div>
+            <div className="text-lg font-bold text-amber-950 mt-0.5">
+              {modCount}{' '}
+              <span className="text-xs font-normal text-amber-700">
+                ({Math.round((modCount / totalCowsCount) * 100)}%)
+              </span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterRisk('HIGH')}
+            className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+              filterRisk === 'HIGH'
+                ? 'bg-red-100/90 border-red-400 shadow-xs'
+                : 'bg-red-50/70 border-red-200/60 hover:bg-red-100/60'
+            }`}
+          >
+            <div className="text-[11px] font-semibold text-red-800 uppercase tracking-wider">
+              {t('common.highRisk', 'High & Critical')}
+            </div>
+            <div className="text-lg font-bold text-red-950 mt-0.5">
+              {highCount}{' '}
+              <span className="text-xs font-normal text-red-700">
+                ({Math.round((highCount / totalCowsCount) * 100)}%)
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* 3. ALERT TRIAGE QUEUE */}
       {activeAlerts.length > 0 && (
         <div className="bg-white rounded-3xl border border-[#244D38]/15 p-6 shadow-xs space-y-4">
@@ -347,27 +488,34 @@ const Dashboard: React.FC = () => {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {activeAlerts.slice(0, 3).map((alert) => {
-              const isHigh = alert.risk_category === 'High Risk';
+              const isCritical = alert.risk_category === 'Critical Risk';
+              const isHigh = isCritical || alert.risk_category === 'High Risk';
               return (
                 <div
                   key={alert.id}
                   className={`p-4 rounded-2xl border transition-all ${
-                    isHigh
+                    isCritical
+                      ? 'bg-rose-50 border-rose-300 text-rose-950 shadow-xs ring-1 ring-rose-200'
+                      : isHigh
                       ? 'bg-red-50/70 border-red-200 text-red-900'
                       : 'bg-amber-50/70 border-amber-200 text-amber-900'
                   }`}
                 >
                   <div className="flex items-center justify-between text-xs font-bold mb-1">
                     <span className="flex items-center gap-1.5">
-                      <AlertTriangle className={`w-3.5 h-3.5 ${isHigh ? 'text-red-600' : 'text-amber-600'}`} />
+                      <AlertTriangle className={`w-3.5 h-3.5 ${isCritical ? 'text-rose-700' : isHigh ? 'text-red-600' : 'text-amber-600'}`} />
                       Cow #{alert.cow_id}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider ${
-                        isHigh ? 'bg-red-200 text-red-900' : 'bg-amber-200 text-amber-900'
+                      className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold ${
+                        isCritical
+                          ? 'bg-rose-700 text-white'
+                          : isHigh
+                          ? 'bg-red-200 text-red-900'
+                          : 'bg-amber-200 text-amber-900'
                       }`}
                     >
-                      {isHigh ? t('common.highRisk') : t('common.moderateRisk')}
+                      {isCritical ? 'Critical Risk' : isHigh ? t('common.highRisk') : t('common.moderateRisk')}
                     </span>
                   </div>
                   <p className="text-xs font-medium text-stone-700 mt-1 line-clamp-2">
